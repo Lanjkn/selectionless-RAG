@@ -18,6 +18,16 @@ chunker = SemanticChunker(
 )
 
 def realizar_chunking_semantico_de_texto(texto, chunk_size=512):
+    """
+    Divide um texto em chunks semânticos utilizando o modelo de embeddings especificado.
+
+    Args:
+        texto (str): Texto a ser segmentado em chunks semânticos.
+        chunk_size (int, opcional): Número máximo de tokens por chunk (padrão: 512).
+
+    Returns:
+        list: Lista de objetos de chunk semântico, cada um contendo um trecho do texto original.
+    """
     chunks = chunker.chunk(
         text=texto,
     )
@@ -25,12 +35,15 @@ def realizar_chunking_semantico_de_texto(texto, chunk_size=512):
 
 def retirar_embeddings_e_salvar_no_minivector_db(texto, metadados, doc_name):
     """
-    Extrai embeddings do texto e salva no MiniVectorDB.
-    
+    Extrai embeddings dos chunks semânticos e do texto processado, salvando-os nos bancos MiniVectorDB.
+
     Args:
         texto (str): Texto para o qual as embeddings serão extraídas.
-        metadados (dict): Metadados associados ao texto.
-        doc_name (str): Nome do documento para identificação.
+        metadados (dict): Metadados associados ao texto (ex: autor, data, etc).
+        doc_name (str): Nome do documento para identificação única.
+
+    Returns:
+        str: ID único gerado para o documento salvo.
     """
     unique_id = doc_name + get_uuid()
 
@@ -40,7 +53,6 @@ def retirar_embeddings_e_salvar_no_minivector_db(texto, metadados, doc_name):
 
     texto_comprimido = compress_text(texto)
     texto_processado_e_enxuto = remove_stopwords(texto_comprimido)
-
 
     chunks_semanticos = realizar_chunking_semantico_de_texto(texto)
     chunks_semanticos = [chunk.text for chunk in chunks_semanticos]
@@ -53,7 +65,7 @@ def retirar_embeddings_e_salvar_no_minivector_db(texto, metadados, doc_name):
             metadata_dict=metadados
         )
 
-    # Extrair embeddings
+    # Extrai embedding do texto processado (resumo)
     embeddings_resumo = extract_embeddings([texto_processado_e_enxuto], embedding_type=EmbeddingType.SEMANTIC)[0]
 
     vector_db_for_selectionless_searching.store_embedding(
@@ -71,14 +83,14 @@ def retirar_embeddings_e_salvar_no_minivector_db(texto, metadados, doc_name):
 
 def buscar_semanticamente_entre_documentos(query, k = 5):
     """
-    Busca semanticamente entre documentos no MiniVectorDB.
-    
+    Busca semanticamente entre todos os documentos salvos, retornando os mais relevantes para a consulta.
+
     Args:
-        query (str): Consulta para busca.
-        k (int): Número de resultados a serem retornados.
-    
+        query (str): Consulta em linguagem natural para busca.
+        k (int, opcional): Número de resultados mais relevantes a serem retornados (padrão: 5).
+
     Returns:
-        list: Lista de IDs dos documentos mais relevantes.
+        list: Lista dos nomes dos documentos mais relevantes, ordenados por similaridade.
     """
 
     # Extrair embeddings da consulta
@@ -93,26 +105,25 @@ def buscar_semanticamente_entre_documentos(query, k = 5):
     for ids, distances, metadatas in zip(ids, distances, metadatas):
         ids_para_retornar.append(metadatas['documento'])
 
-
     return ids_para_retornar
 
 def realizar_retirada_de_contexto_de_documentos_apropriados(docs_para_filtrar, query, k = 5):
     """
-    Realiza a retirada de contexto de documentos apropriados.
-    
+    Recupera os trechos de texto mais relevantes de um subconjunto de documentos, dado uma consulta.
+
     Args:
-        ids (list): Lista de IDs dos documentos.
-        query (str): Consulta para busca.
-        k (int): Número de resultados a serem retornados.
-    
+        docs_para_filtrar (list): Lista de nomes/IDs dos documentos a serem filtrados.
+        query (str): Consulta em linguagem natural para busca.
+        k (int, opcional): Número de resultados mais relevantes a serem retornados (padrão: 5).
+
     Returns:
-        list: Lista de IDs dos documentos mais relevantes.
+        list: Lista de dicionários contendo distância, texto original e nome do documento para cada resultado relevante.
     """
 
     # Extrair embeddings da consulta
     query_embedding = extract_embeddings([query], EmbeddingType.SEMANTIC)[0]
 
-    # Buscar no MiniVectorDB
+    # Buscar no MiniVectorDB apenas nos documentos filtrados
     or_filters = [
         {
             "documento": documento,
@@ -133,4 +144,3 @@ def realizar_retirada_de_contexto_de_documentos_apropriados(docs_para_filtrar, q
         })
 
     return resultados_reais
-
