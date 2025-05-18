@@ -1,0 +1,16 @@
+fastapi
+Pillow
+pytesseract
+xmltodict
+docx2txt
+PyPDF2
+uvicorn
+python-multipart
+pandas
+openpyxl
+python-pptx
+xlrd==2.0.1
+textract
+EbookLib
+reportlab
+llm-utility-pack
