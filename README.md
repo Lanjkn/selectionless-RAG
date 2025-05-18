@@ -1,4 +1,4 @@
-# Utilitários para Banco de Dados Vetorial Sem Seleção
+# RAG de documentos sem seleção - POC
 
 Este módulo fornece utilitários de alto nível para chunking semântico, extração de embeddings e busca semântica eficiente em documentos usando bancos de dados vetoriais. Ele foi projetado para suportar pipelines de RAG (retrieval-augmented generation) sem seleção manual e busca semântica refinada em aplicações de PLN.
 
