@@ -1,5 +1,4 @@
 from utility_pack.vector_storage import MiniVectorDB
-from minivectordb.embedding_model import EmbeddingModel, AlternativeModel
 from utility_pack.embeddings import extract_embeddings, EmbeddingType
 from utility_pack.text import get_uuid, remove_stopwords, compress_text
 import numpy as np
@@ -7,7 +6,6 @@ import numpy as np
 # Initialize a MiniVectorDB instance
 vector_db_for_selectionless_searching = MiniVectorDB(storage_file='my_vector_db_selection_less.pkl')
 vector_db = MiniVectorDB(storage_file='my_vector_db.pkl')
-model = EmbeddingModel(alternative_model=AlternativeModel.small, use_quantized_onnx_model=False)
 
 from chonkie import SemanticChunker
 
@@ -45,22 +43,22 @@ def retirar_embeddings_e_salvar_no_minivector_db(texto, metadados, doc_name):
 
 
     chunks_semanticos = realizar_chunking_semantico_de_texto(texto)
+    chunks_semanticos = [chunk.text for chunk in chunks_semanticos]
+    embeddings = extract_embeddings(chunks_semanticos, embedding_type=EmbeddingType.SEMANTIC)
 
-    for chunk in chunks_semanticos:
-        embeddings = model.extract_embeddings(chunk)
+    for i, chunk in enumerate(chunks_semanticos):
         vector_db.store_embedding(
-            unique_id=doc_name + get_uuid(),
-            embedding=embeddings,
+            unique_id=unique_id + f"_{i}",
+            embedding=embeddings[i],
             metadata_dict=metadados
         )
 
-
     # Extrair embeddings
-    embeddings = model.extract_embeddings(texto_processado_e_enxuto)
+    embeddings_resumo = extract_embeddings([texto_processado_e_enxuto], embedding_type=EmbeddingType.SEMANTIC)[0]
 
     vector_db_for_selectionless_searching.store_embedding(
         unique_id=unique_id,
-        embedding=embeddings,
+        embedding=embeddings_resumo,
         metadata_dict=metadados
     )
 
@@ -84,10 +82,10 @@ def buscar_semanticamente_entre_documentos(query, k = 5):
     """
 
     # Extrair embeddings da consulta
-    query_embedding = model.extract_embeddings(query)
+    query_embedding = extract_embeddings([query], embedding_type=EmbeddingType.SEMANTIC)
     
     # Buscar no MiniVectorDB
-    results = vector_db_for_selectionless_searching.find_most_similar(query_embedding, k=k)
+    results = vector_db_for_selectionless_searching.find_most_similar(query_embedding[0], k=k)
 
     ids_para_retornar = []
     ids, distances, metadatas = results
@@ -112,7 +110,7 @@ def realizar_retirada_de_contexto_de_documentos_apropriados(docs_para_filtrar, q
     """
 
     # Extrair embeddings da consulta
-    query_embedding = model.extract_embeddings(query)
+    query_embedding = extract_embeddings([query], EmbeddingType.SEMANTIC)[0]
 
     # Buscar no MiniVectorDB
     or_filters = [
